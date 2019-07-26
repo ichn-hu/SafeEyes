@@ -81,9 +81,7 @@ class SettingsDialog(object):
         # Update relative states
         # GtkSwitch state-set signal is available only from 3.14
         if Gtk.get_minor_version() >= 14:
-            self.switch_strict_break.connect('state-set', self.on_switch_strict_break_activate)
             self.switch_postpone.connect('state-set', self.on_switch_postpone_activate)
-            self.on_switch_strict_break_activate(self.switch_strict_break, self.switch_strict_break.get_active())
             self.on_switch_postpone_activate(self.switch_postpone, self.switch_postpone.get_active())
         self.initializing = False
 
@@ -106,7 +104,7 @@ class SettingsDialog(object):
         self.spin_postpone_duration.set_value(config.get('postpone_duration'))
         self.spin_disable_keyboard_shortcut.set_value(config.get('shortcut_disable_time'))
         self.switch_strict_break.set_active(config.get('strict_break'))
-        self.switch_postpone.set_active(config.get('allow_postpone') and not config.get('strict_break'))
+        self.switch_postpone.set_active(config.get('allow_postpone'))
         self.switch_persist.set_active(config.get('persist_state'))
         self.infobar_long_break_shown = False
 
@@ -246,15 +244,6 @@ class SettingsDialog(object):
         Show the SettingsDialog.
         """
         self.window.show_all()
-
-    def on_switch_strict_break_activate(self, switch, state):
-        """
-        Event handler to the state change of the postpone switch.
-        Enable or disable the self.spin_postpone_duration based on the state of the postpone switch.
-        """
-        strict_break_enable = state
-        self.switch_postpone.set_sensitive(not strict_break_enable)
-        self.spin_disable_keyboard_shortcut.set_sensitive(not strict_break_enable)
 
     def on_switch_postpone_activate(self, switch, state):
         """

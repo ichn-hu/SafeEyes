@@ -20,6 +20,8 @@ import datetime
 import logging
 import subprocess
 import threading
+import re
+import os
 
 from safeeyes import Utility
 from safeeyes.model import State
@@ -42,6 +44,28 @@ next_break_duration = 0
 break_interval = 0
 waiting_time = 2
 interpret_idle_as_break = False
+is_wayland_and_gnome = False
+
+
+def __gnome_wayland_idle_time():
+    """
+    Determine system idle time in seconds, specifically for gnome with wayland.
+    If there's a failure, return 0.
+    https://unix.stackexchange.com/a/492328/222290
+    """
+    try:
+        output = subprocess.check_output([
+            'dbus-send',
+            '--print-reply',
+            '--dest=org.gnome.Mutter.IdleMonitor',
+            '/org/gnome/Mutter/IdleMonitor/Core',
+            'org.gnome.Mutter.IdleMonitor.GetIdletime'
+        ])
+        return int(re.search(rb'\d+$', output).group(0)) / 1000
+    except BaseException as e:
+        logging.warning("Failed to get system idle time for gnome/wayland.")
+        logging.warning(str(e))
+        return 0
 
 
 def __system_idle_time():
@@ -50,6 +74,8 @@ def __system_idle_time():
     Return the idle time if xprintidle is available, otherwise return 0.
     """
     try:
+        if is_wayland_and_gnome:
+            return __gnome_wayland_idle_time()
         # Convert to seconds
         return int(subprocess.check_output(['xprintidle']).decode('utf-8')) / 1000
     except BaseException:
@@ -88,6 +114,7 @@ def init(ctx, safeeyes_config, plugin_config):
     global waiting_time
     global interpret_idle_as_break
     global postpone_if_active
+    global is_wayland_and_gnome
     logging.debug('Initialize Smart Pause plugin')
     context = ctx
     enable_safe_eyes = context['api']['enable_safeeyes']
@@ -99,6 +126,7 @@ def init(ctx, safeeyes_config, plugin_config):
     break_interval = safeeyes_config.get(
         'short_break_interval') * 60  # Convert to seconds
     waiting_time = min(2, idle_time)  # If idle time is 1 sec, wait only 1 sec
+    is_wayland_and_gnome = context['desktop'] == 'gnome' and context['is_wayland']
 
 
 def __start_idle_monitor():

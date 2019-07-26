@@ -112,7 +112,7 @@ class BreakScreen(object):
         """
         Show/update the count down on all screens.
         """
-        self.enable_shortcut = not self.strict_break and self.shortcut_disable_time <= seconds
+        self.enable_shortcut = self.shortcut_disable_time <= seconds
         mins, secs = divmod(countdown, 60)
         timeformat = '{:02d}:{:02d}'.format(mins, secs)
         GLib.idle_add(lambda: self.__update_count_down(timeformat))
@@ -123,7 +123,7 @@ class BreakScreen(object):
         """
         message = break_obj.name
         image_path = break_obj.image
-        self.enable_shortcut = not self.strict_break and self.shortcut_disable_time <= 0
+        self.enable_shortcut = self.shortcut_disable_time <= 0
         GLib.idle_add(lambda: self.__show_break_screen(message, image_path, widget, tray_actions))
 
     def close(self):
@@ -185,15 +185,15 @@ class BreakScreen(object):
                 toolbar_button.show()
 
             # Add the buttons
-            if not self.strict_break:
+            if self.enable_postpone:
                 # Add postpone button
-                if self.enable_postpone:
-                    btn_postpone = Gtk.Button(_('Postpone'))
-                    btn_postpone.get_style_context().add_class('btn_postpone')
-                    btn_postpone.connect('clicked', self.on_postpone_clicked)
-                    btn_postpone.set_visible(True)
-                    box_buttons.pack_start(btn_postpone, True, True, 0)
+                btn_postpone = Gtk.Button(_('Postpone'))
+                btn_postpone.get_style_context().add_class('btn_postpone')
+                btn_postpone.connect('clicked', self.on_postpone_clicked)
+                btn_postpone.set_visible(True)
+                box_buttons.pack_start(btn_postpone, True, True, 0)
 
+            if not self.strict_break:
                 # Add the skip button
                 btn_skip = Gtk.Button(_('Skip'))
                 btn_skip.get_style_context().add_class('btn_skip')
@@ -253,7 +253,7 @@ class BreakScreen(object):
                 # Avoid waiting for next event by checking pending events
                 event = self.display.next_event()
                 if self.enable_shortcut and event.type == X.KeyPress:
-                    if event.detail == self.keycode_shortcut_skip:
+                    if event.detail == self.keycode_shortcut_skip and not self.strict_break:
                         self.skip_break()
                         break
                     elif self.enable_postpone and event.detail == self.keycode_shortcut_postpone:
